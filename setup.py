@@ -59,38 +59,34 @@ class BuildCommand(AbstractESMFCommand):
             f.write('ESMFMKFILE = "%s"' % self.ESMFMKFILE)
             f.close()
 
-
-
-
         # Attempt to load ESMF.
         update_system_path()
         #import ESMF.interface.loadESMF
 
 # add wrapper file names
-src_path = os.path.join('src', 'Superstructure')
+src_paths = []
+src_paths.append(os.path.join('src', 'Superstructure'))
+src_paths.append(os.path.join('src', 'Infrastructure'))
+
 wrapper_build_filenames = []
-for dirpath, dirnames, filenames in os.walk(src_path):
-    for filename in filenames:
-        if '.F90' in filename:
-            bldcmd = "cd {}; rm *.o; ifort {} -c -o {} -O3 -fPIC; cd -".format(dirpath, filename, filename.replace('.F90', '.o'))
-            print(bldcmd)
-            os.system(bldcmd)
-            wrapper_build_filenames.append(os.path.join(dirpath,filename.replace('.F90', '.o')))
+for src_path in src_paths:
+    for dirpath, dirnames, filenames in os.walk(src_path):
+        for filename in filenames:
+            if '.F90' in filename:
+                bldcmd = "cd {}; rm *.o; ifort {} -c -o {} -O3 -fPIC; cd -".format(dirpath, filename, filename.replace('.F90', '.o'))
+                os.system(bldcmd)
+                wrapper_build_filenames.append(os.path.join(dirpath,filename.replace('.F90', '.o')))
 
 print(wrapper_build_filenames)
 
 ext_modules = [Extension("esmf_wrapper",
-                         ["src/Superstructure/ESMFMod/ESMF_Init.pyx"],
-                         #include_dirs=[get_include()],
+                         ["setup.pyx"],
                          extra_compile_args=['-fPIC', '-O3'],
-                         extra_link_args=wrapper_build_filenames,
-                         #depends=wrapper_build_filenames,
-    )
-]
+                         extra_link_args=wrapper_build_filenames,)]
 
 setup(name="esmf-wrapper",
       version="0.1.0",
       description="ESMF Python wrapper",
-      ext_modules=ext_modules,
+      ext_modules=cythonize(ext_modules),
       cmdclass={'build_ext': build_ext}
 )
